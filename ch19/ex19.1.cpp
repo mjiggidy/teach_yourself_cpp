@@ -1,5 +1,7 @@
 #include <iostream>
+#include <fstream>
 #include <set>
+#include <map>
 #include <string>
 #include <sstream>
 #include <algorithm>
@@ -22,6 +24,14 @@ struct Entry
 		void AddDefinition(string def)
 		{
 			definitions.insert(def);
+		}
+
+		void WriteToFile(ofstream& file_dict)
+		{
+			file_dict << word << endl;
+			for(auto def: definitions)
+				file_dict << def << endl;
+			file_dict << endl;
 		}
 
 		string Formatted()
@@ -52,7 +62,8 @@ struct Entry
 		}
 };
 
-char Prompt(const set<char> options)
+template<typename T>
+T Prompt(const set<T>& options)
 {
 	while(true){
 		string input;
@@ -62,7 +73,7 @@ char Prompt(const set<char> options)
 		if(input.empty())
 			continue;
 		
-		char selection = toupper(input[0]);
+		T selection = toupper(input[0]);
 
 		if(options.find(selection) != options.end())
 			return selection;
@@ -155,6 +166,84 @@ void DeleteWord(set<Entry>& dict)
 	
 }
 
+void SaveDictionary(const set<Entry>& dict)
+{
+	if(dict.empty())
+	{
+		cout << "There are no words in the dictionary." << endl;
+		return;
+	}
+
+	ofstream file_dict;
+	file_dict.open("dict.dat");
+
+	for(auto ent: dict)
+	{
+		ent.WriteToFile(file_dict);
+	}
+}
+
+void ReadDictionary(set<Entry>& dict)
+{
+	ifstream file_dict;
+	file_dict.open("dict.dat");
+
+	while(!file_dict.eof())
+	{
+		string word;
+		string def;
+		set<string> defs;
+
+		// Read word
+		getline(file_dict, word);
+		if(word.empty())
+		{
+			break;
+		}
+
+		cout << "Reading " << word << endl;
+		// Read def
+		getline(file_dict, def);
+		if(def.empty())
+		{
+			break;
+		}
+		cout << "Reading " << def << endl;
+		defs.insert(def);
+
+		// Read more defs if present
+		getline(file_dict, def);
+		while(!def.empty())
+		{
+			defs.insert(def);
+		}
+
+		Entry new_ent = Entry(word, *(defs.begin()));
+		if(defs.size() > 1)
+		{
+			for(set<string>::iterator t = next(defs.begin()); t != defs.end(); ++t)
+			{
+				new_ent.AddDefinition(*t);
+			}
+		}
+		dict.insert(new_ent);
+	}
+}
+
+template<typename T, typename U>
+T DisplayMenu(const map<T,U>& menu, string title)
+{
+	set<T> options;
+	cout << title << ":" << endl;
+	for(map<T,U>::const_iterator t = menu.cbegin(); t != menu.cend(); ++t)
+	{
+		options.insert(toupper(t->first));
+		cout << "[" << t->first << "] " << t->second << endl;
+	}
+
+	return Prompt(options);
+}
+
 int main()
 {
 	set<Entry> dictionary;
@@ -163,17 +252,20 @@ int main()
 	cout << "============" << endl;
 	cout << endl;
 
+	map<char, string> menu_main;
+	menu_main['1'] = "View dictionary";
+	menu_main['2'] = "Add to dictionary";
+	menu_main['3'] = "Remove from dictionary";
+	menu_main['4'] = "Write dictionary to disk";
+	menu_main['5'] = "Load dictionary from disk";
+	menu_main['Q'] = "Quit";
+
+
 	bool quit = false;
 
 	while(quit == false)
 	{
-		cout << "Main Menu:" << endl;
-		cout << "[1] View dictionary" << endl;
-		cout << "[2] Add to dictionary" << endl;
-		cout << "[3] Remove from dictionary" << endl;
-		cout << "[Q] Quit" << endl;
-
-		switch(Prompt({'1','2','3','Q'}))
+		switch(DisplayMenu(menu_main, "Main Menu"))
 		{
 			case '1':
 				cout << endl;
@@ -190,6 +282,18 @@ int main()
 			case '3':
 				cout << endl;
 				DeleteWord(dictionary);
+				cout << endl;
+				break;
+			
+			case '4':
+				cout << endl;
+				SaveDictionary(dictionary);
+				cout << endl;
+				break;
+
+			case '5':
+				cout << endl;
+				ReadDictionary(dictionary);
 				cout << endl;
 				break;
 
